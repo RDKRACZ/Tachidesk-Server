@@ -1,25 +1,11 @@
-# Server: v0.X.Y-rXXX + WebUI: rXXX
-## Tachidesk-Server
-### Public API
-#### Non-breaking changes
+# Server: v0.X.Y-next + WebUI: rXXX
+## TL;DR
 - N/A
 
-#### Breaking changes
+## Suwayomi-Server Changelog
 - N/A
 
-#### Bug fixes
-- N/A
-
-### Private API
+## Suwayomi-WebUI Changelog
 - N/A
 
 
-## Tachidesk-WebUI
-#### Visible changes
-- N/A
-
-#### Bug fixes
-- N/A
-
-#### Internal changes
-- N/A

@@ -18,8 +18,12 @@ class M0004_AnimeTablesBatch1 : AddTableMigration() {
         val apkName = varchar("apk_name", 1024)
 
         // default is the local source icon from tachiyomi
-        val iconUrl = varchar("icon_url", 2048)
-            .default("https://raw.githubusercontent.com/tachiyomiorg/tachiyomi/64ba127e7d43b1d7e6d58a6f5c9b2bd5fe0543f7/app/src/main/res/mipmap-xxxhdpi/ic_local_source.webp")
+        @Suppress("ktlint:standard:max-line-length")
+        val iconUrl =
+            varchar("icon_url", 2048)
+                .default(
+                    "https://raw.githubusercontent.com/tachiyomiorg/tachiyomi/64ba127e7d43b1d7e6d58a6f5c9b2bd5fe0543f7/app/src/main/res/mipmap-xxxhdpi/ic_local_source.webp",
+                )
 
         val name = varchar("name", 128)
         val pkgName = varchar("pkg_name", 128)
@@ -39,13 +43,14 @@ class M0004_AnimeTablesBatch1 : AddTableMigration() {
         override val id = long("id").entityId()
         val name = varchar("name", 128)
         val lang = varchar("lang", 10)
-        val extension = reference("extension", suwayomi.tachidesk.anime.model.table.AnimeExtensionTable)
+        val extension = reference("extension", AnimeExtensionTable())
         val partOfFactorySource = bool("part_of_factory_source").default(false)
     }
 
     override val tables: Array<Table>
-        get() = arrayOf(
-            AnimeExtensionTable(),
-            AnimeSourceTable()
-        )
+        get() =
+            arrayOf(
+                AnimeExtensionTable(),
+                AnimeSourceTable(),
+            )
 }

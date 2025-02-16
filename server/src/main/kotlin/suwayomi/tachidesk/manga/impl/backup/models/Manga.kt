@@ -1,3 +1,5 @@
+@file:Suppress("ktlint:standard:property-naming")
+
 package suwayomi.tachidesk.manga.impl.backup.models
 
 import eu.kanade.tachiyomi.source.model.SManga
@@ -15,7 +17,6 @@ object ReadingModeType {
 }
 
 interface Manga : SManga {
-
     var id: Long?
 
     var source: Long
@@ -40,19 +41,21 @@ interface Manga : SManga {
         setChapterFlags(order, CHAPTER_SORT_MASK)
     }
 
-    fun sortDescending(): Boolean {
-        return chapter_flags and CHAPTER_SORT_MASK == CHAPTER_SORT_DESC
-    }
+    fun sortDescending(): Boolean = chapter_flags and CHAPTER_SORT_MASK == CHAPTER_SORT_DESC
 
-    fun getGenres(): List<String>? {
-        return genre?.split(", ")?.map { it.trim() }
-    }
+    fun getGenres(): List<String>? = genre?.split(", ")?.map { it.trim() }
 
-    private fun setChapterFlags(flag: Int, mask: Int) {
+    private fun setChapterFlags(
+        flag: Int,
+        mask: Int,
+    ) {
         chapter_flags = chapter_flags and mask.inv() or (flag and mask)
     }
 
-    private fun setViewerFlags(flag: Int, mask: Int) {
+    private fun setViewerFlags(
+        flag: Int,
+        mask: Int,
+    ) {
         viewer_flags = viewer_flags and mask.inv() or (flag and mask)
     }
 
@@ -86,7 +89,6 @@ interface Manga : SManga {
         set(rotationType) = setViewerFlags(rotationType, OrientationType.MASK)
 
     companion object {
-
         // Generic filter that does not filter anything
         const val SHOW_ALL = 0x00000000
 
@@ -114,16 +116,6 @@ interface Manga : SManga {
         const val CHAPTER_DISPLAY_NAME = 0x00000000
         const val CHAPTER_DISPLAY_NUMBER = 0x00100000
         const val CHAPTER_DISPLAY_MASK = 0x00100000
-
-        fun create(source: Long): Manga = MangaImpl().apply {
-            this.source = source
-        }
-
-        fun create(pathUrl: String, title: String, source: Long = 0): Manga = MangaImpl().apply {
-            url = pathUrl
-            this.title = title
-            this.source = source
-        }
     }
 }
 

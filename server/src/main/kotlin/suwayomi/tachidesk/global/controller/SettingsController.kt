@@ -7,22 +7,51 @@ package suwayomi.tachidesk.global.controller
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import io.javalin.http.Context
+import io.javalin.http.HttpStatus
 import suwayomi.tachidesk.global.impl.About
+import suwayomi.tachidesk.global.impl.AboutDataClass
 import suwayomi.tachidesk.global.impl.AppUpdate
+import suwayomi.tachidesk.global.impl.UpdateDataClass
 import suwayomi.tachidesk.server.JavalinSetup.future
+import suwayomi.tachidesk.server.util.handler
+import suwayomi.tachidesk.server.util.withOperation
 
 /** Settings Page/Screen */
 object SettingsController {
     /** returns some static info about the current app build */
-    fun about(ctx: Context) {
-        ctx.json(About.getAbout())
-    }
+    val about =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("About Suwayomi-Server")
+                    description("Returns some static info about the current app build")
+                }
+            },
+            behaviorOf = { ctx ->
+                ctx.json(About.getAbout())
+            },
+            withResults = {
+                json<AboutDataClass>(HttpStatus.OK)
+            },
+        )
 
     /** check for app updates */
-    fun checkUpdate(ctx: Context) {
-        ctx.json(
-            future { AppUpdate.checkUpdate() }
+    val checkUpdate =
+        handler(
+            documentWith = {
+                withOperation {
+                    summary("Suwayomi-Server update check")
+                    description("Check for app updates")
+                }
+            },
+            behaviorOf = { ctx ->
+                ctx.future {
+                    future { AppUpdate.checkUpdate() }
+                        .thenApply { ctx.json(it) }
+                }
+            },
+            withResults = {
+                json<Array<UpdateDataClass>>(HttpStatus.OK)
+            },
         )
-    }
 }

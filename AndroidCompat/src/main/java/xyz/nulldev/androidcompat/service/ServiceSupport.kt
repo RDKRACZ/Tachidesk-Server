@@ -3,7 +3,7 @@ package xyz.nulldev.androidcompat.service
 import android.app.Service
 import android.content.Context
 import android.content.Intent
-import mu.KotlinLogging
+import io.github.oshai.kotlinlogging.KotlinLogging
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.concurrent.thread
 
@@ -18,7 +18,10 @@ class ServiceSupport {
 
     private val logger = KotlinLogging.logger {}
 
-    fun startService(@Suppress("UNUSED_PARAMETER") context: Context, intent: Intent) {
+    fun startService(
+        @Suppress("UNUSED_PARAMETER") context: Context,
+        intent: Intent,
+    ) {
         val name = intentToClassName(intent)
 
         logger.debug { "Starting service: $name" }
@@ -27,15 +30,18 @@ class ServiceSupport {
 
         runningServices[name] = service
 
-        //Setup service
+        // Setup service
         thread {
             callOnCreate(service)
-            //TODO Handle more complex cases
+            // TODO Handle more complex cases
             service.onStartCommand(intent, 0, 0)
         }
     }
 
-    fun stopService(@Suppress("UNUSED_PARAMETER") context: Context, intent: Intent) {
+    fun stopService(
+        @Suppress("UNUSED_PARAMETER") context: Context,
+        intent: Intent,
+    ) {
         val name = intentToClassName(intent)
         stopService(name)
     }
@@ -43,7 +49,7 @@ class ServiceSupport {
     fun stopService(name: String) {
         logger.debug { "Stopping service: $name" }
         val service = runningServices.remove(name)
-        if(service == null) {
+        if (service == null) {
             logger.warn { "An attempt was made to stop a service that is not running: $name" }
         } else {
             thread {
@@ -63,6 +69,6 @@ class ServiceSupport {
     fun serviceInstanceFromClass(className: String): Service {
         val clazzObj = Class.forName(className)
         return clazzObj.getDeclaredConstructor().newInstance() as? Service
-                ?: throw IllegalArgumentException("$className is not a Service!")
+            ?: throw IllegalArgumentException("$className is not a Service!")
     }
 }

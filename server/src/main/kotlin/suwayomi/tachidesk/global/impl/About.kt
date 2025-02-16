@@ -7,7 +7,7 @@ package suwayomi.tachidesk.global.impl
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import suwayomi.tachidesk.server.BuildConfig
+import suwayomi.tachidesk.server.generated.BuildConfig
 
 data class AboutDataClass(
     val name: String,
@@ -20,8 +20,8 @@ data class AboutDataClass(
 )
 
 object About {
-    fun getAbout(): AboutDataClass {
-        return AboutDataClass(
+    fun getAbout(): AboutDataClass =
+        AboutDataClass(
             BuildConfig.NAME,
             BuildConfig.VERSION,
             BuildConfig.REVISION,
@@ -30,5 +30,4 @@ object About {
             BuildConfig.GITHUB,
             BuildConfig.DISCORD,
         )
-    }
 }

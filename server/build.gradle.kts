@@ -1,97 +1,107 @@
-
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.jmailen.gradle.kotlinter.tasks.FormatTask
-import org.jmailen.gradle.kotlinter.tasks.LintTask
+import de.undercouch.gradle.tasks.download.Download
+import org.jetbrains.kotlin.gradle.tasks.KotlinJvmCompile
 import java.time.Instant
 
 plugins {
+    id(
+        libs.plugins.kotlin.jvm
+            .get()
+            .pluginId,
+    )
+    id(
+        libs.plugins.kotlin.serialization
+            .get()
+            .pluginId,
+    )
+    id(
+        libs.plugins.ktlint
+            .get()
+            .pluginId,
+    )
     application
-    kotlin("plugin.serialization")
-    id("com.github.johnrengelman.shadow") version "7.0.0"
-    id("org.jmailen.kotlinter") version "3.6.0"
-    id("com.github.gmazzo.buildconfig") version "3.0.2"
-}
-
-repositories {
-    maven {
-        url = uri("https://repo1.maven.org/maven2/")
-    }
-    maven {
-        url = uri("https://jitpack.io")
-    }
+    alias(libs.plugins.shadowjar)
+    id(
+        libs.plugins.buildconfig
+            .get()
+            .pluginId,
+    )
 }
 
 dependencies {
-    // okhttp
-    val okhttpVersion = "4.9.1" // version is locked by Tachiyomi extensions
-    implementation("com.squareup.okhttp3:okhttp:$okhttpVersion")
-    implementation("com.squareup.okhttp3:logging-interceptor:$okhttpVersion")
-    implementation("com.squareup.okhttp3:okhttp-dnsoverhttps:$okhttpVersion")
-    implementation("com.squareup.okio:okio:2.10.0")
+    // Shared
+    implementation(libs.bundles.shared)
+    testImplementation(libs.bundles.sharedTest)
+
+    // OkHttp
+    implementation(libs.bundles.okhttp)
+    implementation(libs.okio)
 
     // Javalin api
-    implementation("io.javalin:javalin:3.13.11")
-    // jackson version locked by javalin, ref: `io.javalin.core.util.OptionalDependency`
-    implementation("com.fasterxml.jackson.core:jackson-databind:2.10.3")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin:2.10.3")
+    implementation(libs.bundles.javalin)
+    implementation(libs.bundles.jackson)
+
+    // GraphQL
+    implementation(libs.graphql.kotlin.server)
+    implementation(libs.graphql.kotlin.scheme)
+    implementation(libs.graphql.java.core)
+    implementation(libs.graphql.java.scalars)
 
     // Exposed ORM
-    val exposedVersion = "0.34.1"
-    implementation("org.jetbrains.exposed:exposed-core:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-dao:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-jdbc:$exposedVersion")
-    implementation("org.jetbrains.exposed:exposed-java-time:$exposedVersion")
-    // current database driver
-    implementation("com.h2database:h2:1.4.200")
+    implementation(libs.bundles.exposed)
+    implementation(libs.h2)
 
     // Exposed Migrations
-    val exposedMigrationsVersion = "3.1.2"
-    implementation("com.github.Suwayomi:exposed-migrations:$exposedMigrationsVersion")
+    implementation(libs.exposed.migrations)
 
     // tray icon
-    implementation("com.dorkbox:SystemTray:4.1")
-    implementation("com.dorkbox:Utilities:1.9") // version locked by SystemTray
+    implementation(libs.bundles.systemtray)
 
+    // dependencies of Mihon (Tachiyomi) extensions, some are duplicate, keeping it here for reference
+    implementation(libs.injekt)
+    implementation(libs.okhttp.core)
+    implementation(libs.rxjava)
+    implementation(libs.jsoup)
 
-    // dependencies of Tachiyomi extensions, some are duplicate, keeping it here for reference
-    implementation("com.github.inorichi.injekt:injekt-core:65b0440")
-    implementation("com.squareup.okhttp3:okhttp:4.9.1")
-    implementation("io.reactivex:rxjava:1.3.8")
-    implementation("org.jsoup:jsoup:1.14.1")
-    implementation("com.google.code.gson:gson:2.8.7")
-    implementation("com.github.salomonbrys.kotson:kotson:2.5.0")
+    // ComicInfo
+    implementation(libs.serialization.xml.core)
+    implementation(libs.serialization.xml)
 
+    // Sort
+    implementation(libs.sort)
 
     // asm for ByteCodeEditor(fixing SimpleDateFormat) (must match Dex2Jar version)
-    implementation("org.ow2.asm:asm:9.2")
+    implementation(libs.asm)
 
-    // extracting zip files
-    implementation("net.lingala.zip4j:zip4j:2.9.0")
+    // Disk & File
+    implementation(libs.cache4k)
+    implementation(libs.zip4j)
+    implementation(libs.commonscompress)
+    implementation(libs.junrar)
 
-    // CloudflareInterceptor
-    implementation("net.sourceforge.htmlunit:htmlunit:2.52.0")
-
-    // Source models and interfaces from Tachiyomi 1.x
-    // using source class from tachiyomi commit 9493577de27c40ce8b2b6122cc447d025e34c477 to not depend on tachiyomi.sourceapi
-//    implementation("tachiyomi.sourceapi:source-api:1.1")
+    // AES/CBC/PKCS7Padding Cypher provider for zh.copymanga
+    implementation(libs.bouncycastle)
 
     // AndroidCompat
-    implementation(project(":AndroidCompat"))
-    implementation(project(":AndroidCompat:Config"))
+    implementation(projects.androidCompat)
+    implementation(projects.androidCompat.config)
 
     // uncomment to test extensions directly
 //    implementation(fileTree("lib/"))
+    implementation(kotlin("script-runtime"))
+
+    testImplementation(libs.mockk)
+
+    implementation(libs.cron4j)
+
+    implementation(libs.cronUtils)
 }
 
 application {
+    applicationDefaultJvmArgs =
+        listOf(
+            "-Djunrar.extractor.thread-keep-alive-seconds=30",
+        )
     mainClass.set(MainClass)
-
-    // uncomment for testing electron
-//    applicationDefaultJvmArgs = listOf(
-//            "-Dsuwayomi.tachidesk.config.server.webUIInterface=electron",
-//            "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron"
-//    )
 }
 
 sourceSets {
@@ -104,7 +114,7 @@ sourceSets {
 
 buildConfig {
     className("BuildConfig")
-    packageName("suwayomi.tachidesk.server")
+    packageName("suwayomi.tachidesk.server.generated")
 
     useKotlinOutput()
 
@@ -112,57 +122,49 @@ buildConfig {
 
     buildConfigField("String", "NAME", quoteWrap(rootProject.name))
     buildConfigField("String", "VERSION", quoteWrap(tachideskVersion))
-    buildConfigField("String", "REVISION", quoteWrap(tachideskRevision))
+    buildConfigField("String", "REVISION", quoteWrap(getTachideskRevision()))
     buildConfigField("String", "BUILD_TYPE", quoteWrap(if (System.getenv("ProductBuildType") == "Stable") "Stable" else "Preview"))
     buildConfigField("long", "BUILD_TIME", Instant.now().epochSecond.toString())
 
-
-    buildConfigField("String", "WEBUI_REPO", quoteWrap("https://github.com/Suwayomi/Tachidesk-WebUI-preview"))
     buildConfigField("String", "WEBUI_TAG", quoteWrap(webUIRevisionTag))
 
-
-    buildConfigField("String", "GITHUB", quoteWrap("https://github.com/Suwayomi/Tachidesk"))
+    buildConfigField("String", "GITHUB", quoteWrap("https://github.com/Suwayomi/Suwayomi-Server"))
     buildConfigField("String", "DISCORD", quoteWrap("https://discord.gg/DDZdqZWaHA"))
 }
 
 tasks {
     shadowJar {
+        isZip64 = true
         manifest {
             attributes(
-                mapOf(
-                    "Main-Class" to MainClass,
-                    "Implementation-Title" to rootProject.name,
-                    "Implementation-Vendor" to "The Suwayomi Project",
-                    "Specification-Version" to tachideskVersion,
-                    "Implementation-Version" to tachideskRevision
-                )
+                "Main-Class" to MainClass,
+                "Implementation-Title" to rootProject.name,
+                "Implementation-Vendor" to "The Suwayomi Project",
+                "Specification-Version" to tachideskVersion,
+                "Implementation-Version" to getTachideskRevision(),
             )
         }
         archiveBaseName.set(rootProject.name)
         archiveVersion.set(tachideskVersion)
-        archiveClassifier.set(tachideskRevision)
-    }
-    withType<KotlinCompile> {
-        kotlinOptions {
-            freeCompilerArgs = listOf(
-                "-Xopt-in=kotlin.RequiresOptIn",
-                "-Xopt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-                "-Xopt-in=kotlinx.coroutines.InternalCoroutinesApi",
-                "-Xopt-in=kotlinx.serialization.ExperimentalSerializationApi",
-            )
-        }
+        archiveClassifier.set(getTachideskRevision())
+        destinationDirectory.set(File("$rootDir/server/build"))
+        mergeServiceFiles()
     }
 
     test {
-        useJUnit()
+        useJUnitPlatform()
+        testLogging {
+            showStandardStreams = true
+            events("passed", "skipped", "failed")
+        }
     }
 
-    withType<ShadowJar> {
-        destinationDirectory.set(File("$rootDir/server/build"))
-    }
-
-    named("run") {
-        dependsOn("formatKotlin", "lintKotlin")
+    withType<KotlinJvmCompile> {
+        compilerOptions {
+            freeCompilerArgs.add(
+                "-opt-in=kotlinx.serialization.ExperimentalSerializationApi",
+            )
+        }
     }
 
     named<Copy>("processResources") {
@@ -170,23 +172,24 @@ tasks {
         mustRunAfter("downloadWebUI")
     }
 
-    register<de.undercouch.gradle.tasks.download.Download>("downloadWebUI") {
-        src("https://github.com/Suwayomi/Tachidesk-WebUI-preview/releases/download/$webUIRevisionTag/Tachidesk-WebUI-$webUIRevisionTag.zip")
+    register<Download>("downloadWebUI") {
+        src("https://github.com/Suwayomi/Suwayomi-WebUI-preview/releases/download/$webUIRevisionTag/Suwayomi-WebUI-$webUIRevisionTag.zip")
         dest("src/main/resources/WebUI.zip")
-
 
         fun shouldOverwrite(): Boolean {
             val zipPath = project.projectDir.absolutePath + "/src/main/resources/WebUI.zip"
-            val zipFile =  net.lingala.zip4j.ZipFile(zipPath)
+            val zipFile = net.lingala.zip4j.ZipFile(zipPath)
 
             var shouldOverwrite = true
             if (zipFile.isValidZipFile) {
-                val zipRevision = zipFile.getInputStream(zipFile.getFileHeader("revision")).bufferedReader().use {
-                    it.readText().trim()
-                }
+                val zipRevision =
+                    zipFile.getInputStream(zipFile.getFileHeader("revision")).bufferedReader().use {
+                        it.readText().trim()
+                    }
 
-                if (zipRevision == webUIRevisionTag)
+                if (zipRevision == webUIRevisionTag) {
                     shouldOverwrite = false
+                }
             }
 
             return shouldOverwrite
@@ -195,11 +198,16 @@ tasks {
         overwrite(shouldOverwrite())
     }
 
-    withType<LintTask> {
-        source(files("src/kotlin"))
-    }
-
-    withType<FormatTask> {
-        source(files("src/kotlin"))
+    register("runElectron") {
+        group = "application"
+        finalizedBy(run)
+        doFirst {
+            application.applicationDefaultJvmArgs =
+                listOf(
+                    "-Dsuwayomi.tachidesk.config.server.webUIInterface=electron",
+                    // Change this to the installed electron application
+                    "-Dsuwayomi.tachidesk.config.server.electronPath=/usr/bin/electron",
+                )
+        }
     }
 }
