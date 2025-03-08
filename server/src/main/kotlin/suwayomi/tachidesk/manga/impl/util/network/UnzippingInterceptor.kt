@@ -11,7 +11,7 @@ import java.io.IOException
 
 /*
  * Copyright (C) Contributors to the Suwayomi project
- * 
+ *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
@@ -26,20 +26,18 @@ class UnzippingInterceptor : Interceptor {
 
     @Throws(IOException::class)
     private fun unzip(response: Response): Response {
-        if (response.body == null) {
-            return response
-        }
-
         // check if we have gzip response
         val contentEncoding: String? = response.headers["Content-Encoding"]
 
         // this is used to decompress gzipped responses
         return if (contentEncoding != null && contentEncoding == "gzip") {
-            val body = response.body!!
+            val body = response.body
             val contentLength: Long = body.contentLength()
             val responseBody = GzipSource(body.source())
             val strippedHeaders: Headers = response.headers.newBuilder().build()
-            response.newBuilder().headers(strippedHeaders)
+            response
+                .newBuilder()
+                .headers(strippedHeaders)
                 .body(RealResponseBody(body.contentType().toString(), contentLength, responseBody.buffer()))
                 .build()
         } else {

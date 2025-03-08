@@ -7,70 +7,101 @@ package suwayomi.tachidesk.manga.impl.extension.github
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
-import com.github.salomonbrys.kotson.int
-import com.github.salomonbrys.kotson.string
-import com.google.gson.JsonArray
-import com.google.gson.JsonParser
+import eu.kanade.tachiyomi.network.GET
 import eu.kanade.tachiyomi.network.NetworkHelper
-import okhttp3.Request
+import eu.kanade.tachiyomi.network.awaitSuccess
+import eu.kanade.tachiyomi.network.parseAs
+import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MAX
 import suwayomi.tachidesk.manga.impl.util.PackageTools.LIB_VERSION_MIN
-import suwayomi.tachidesk.manga.model.dataclass.ExtensionDataClass
 import uy.kohesive.injekt.injectLazy
 
 object ExtensionGithubApi {
-    private const val BASE_URL = "https://raw.githubusercontent.com"
-    private const val REPO_URL_PREFIX = "$BASE_URL/tachiyomiorg/tachiyomi-extensions/repo"
+    private val logger = KotlinLogging.logger {}
+    private val json: Json by injectLazy()
 
-    private fun parseResponse(json: JsonArray): List<OnlineExtension> {
-        return json
-            .map { it.asJsonObject }
-            .filter { element ->
-                val versionName = element["version"].string
-                val libVersion = versionName.substringBeforeLast('.').toDouble()
-                libVersion in LIB_VERSION_MIN..LIB_VERSION_MAX
-            }
-            .map { element ->
-                val name = element["name"].string.substringAfter("Tachiyomi: ")
-                val pkgName = element["pkg"].string
-                val apkName = element["apk"].string
-                val versionName = element["version"].string
-                val versionCode = element["code"].int
-                val lang = element["lang"].string
-                val nsfw = element["nsfw"].int == 1
-                val icon = "$REPO_URL_PREFIX/icon/${apkName.replace(".apk", ".png")}"
+    @Serializable
+    private data class ExtensionJsonObject(
+        val name: String,
+        val pkg: String,
+        val apk: String,
+        val lang: String,
+        val code: Int,
+        val version: String,
+        val nsfw: Int,
+        val hasReadme: Int = 0,
+        val hasChangelog: Int = 0,
+        val sources: List<ExtensionSourceJsonObject>?,
+    )
 
-                OnlineExtension(name, pkgName, versionName, versionCode, lang, nsfw, apkName, icon)
-            }
+    @Serializable
+    private data class ExtensionSourceJsonObject(
+        val name: String,
+        val lang: String,
+        val id: Long,
+        val baseUrl: String,
+    )
+
+    suspend fun findExtensions(repo: String): List<OnlineExtension> {
+        val response =
+            client.newCall(GET(repo)).awaitSuccess()
+
+        return with(json) {
+            response
+                .parseAs<List<ExtensionJsonObject>>()
+                .toExtensions(repo.substringBeforeLast('/') + '/')
+        }
     }
 
-    suspend fun findExtensions(): List<OnlineExtension> {
-        val response = getRepo()
-        return parseResponse(response)
-    }
-
-    fun getApkUrl(extension: ExtensionDataClass): String {
-        return "$REPO_URL_PREFIX/apk/${extension.apkName}"
-    }
+    fun getApkUrl(
+        repo: String,
+        apkName: String,
+    ): String = "${repo}apk/$apkName"
 
     private val client by lazy {
         val network: NetworkHelper by injectLazy()
-        network.client.newBuilder()
+        network.client
+            .newBuilder()
             .addNetworkInterceptor { chain ->
                 val originalResponse = chain.proceed(chain.request())
-                originalResponse.newBuilder()
+                originalResponse
+                    .newBuilder()
                     .header("Content-Type", "application/json")
                     .build()
+            }.build()
+    }
+
+    private fun List<ExtensionJsonObject>.toExtensions(repo: String): List<OnlineExtension> =
+        this
+            .filter {
+                val libVersion = it.version.substringBeforeLast('.').toDouble()
+                libVersion in LIB_VERSION_MIN..LIB_VERSION_MAX
+            }.map {
+                OnlineExtension(
+                    repo = repo,
+                    name = it.name.substringAfter("Tachiyomi: "),
+                    pkgName = it.pkg,
+                    versionName = it.version,
+                    versionCode = it.code,
+                    lang = it.lang,
+                    isNsfw = it.nsfw == 1,
+                    hasReadme = it.hasReadme == 1,
+                    hasChangelog = it.hasChangelog == 1,
+                    sources = it.sources?.toExtensionSources() ?: emptyList(),
+                    apkName = it.apk,
+                    iconUrl = "${repo}icon/${it.pkg}.png",
+                )
             }
-            .build()
-    }
 
-    private fun getRepo(): JsonArray {
-        val request = Request.Builder()
-            .url("$REPO_URL_PREFIX/index.min.json")
-            .build()
-
-        val response = client.newCall(request).execute().use { response -> response.body!!.string() }
-        return JsonParser.parseString(response).asJsonArray
-    }
+    private fun List<ExtensionSourceJsonObject>.toExtensionSources(): List<OnlineExtensionSource> =
+        this.map {
+            OnlineExtensionSource(
+                name = it.name,
+                lang = it.lang,
+                id = it.id,
+                baseUrl = it.baseUrl,
+            )
+        }
 }

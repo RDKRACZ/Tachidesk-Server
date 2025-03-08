@@ -1,10 +1,10 @@
+@file:Suppress("ktlint:standard:property-naming")
+
 package suwayomi.tachidesk.manga.impl.backup.models
 
-import org.jetbrains.exposed.sql.ResultRow
-import suwayomi.tachidesk.manga.model.table.MangaTable
+import eu.kanade.tachiyomi.source.model.UpdateStrategy
 
 open class MangaImpl : Manga {
-
     override var id: Long? = null
 
     override var source: Long = -1
@@ -24,6 +24,8 @@ open class MangaImpl : Manga {
     override var status: Int = 0
 
     override var thumbnail_url: String? = null
+
+    override var update_strategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE
 
     override var favorite: Boolean = false
 
@@ -61,21 +63,5 @@ open class MangaImpl : Manga {
         return id == manga.id
     }
 
-    override fun hashCode(): Int {
-        return url.hashCode() + id.hashCode()
-    }
-
-    // Tachidesk -->
-    companion object {
-        fun fromQuery(mangaRecord: ResultRow): MangaImpl {
-            return MangaImpl().apply {
-                url = mangaRecord[MangaTable.url]
-                title = mangaRecord[MangaTable.title]
-                source = mangaRecord[MangaTable.sourceReference]
-                viewer_flags = 0 // TODO: implement
-                chapter_flags = 0 // TODO: implement
-            }
-        }
-    }
-    // Tachidesk <--
+    override fun hashCode(): Int = url.hashCode() + id.hashCode()
 }

@@ -1,5 +1,6 @@
 package suwayomi.tachidesk.manga.impl.backup.proto.models
 
+import eu.kanade.tachiyomi.source.model.UpdateStrategy
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.protobuf.ProtoNumber
 import suwayomi.tachidesk.manga.impl.backup.models.ChapterImpl
@@ -33,12 +34,13 @@ data class BackupManga(
     // Bump by 100 for values that are not saved/implemented in 1.x but are used in 0.x
     @ProtoNumber(100) var favorite: Boolean = true,
     @ProtoNumber(101) var chapterFlags: Int = 0,
-    @ProtoNumber(102) var brokenHistory: List<BrokenBackupHistory> = emptyList(),
+    // @ProtoNumber(102) var brokenHistory: List<BrokenBackupHistory> = emptyList(),
     @ProtoNumber(103) var viewer_flags: Int? = null,
     @ProtoNumber(104) var history: List<BackupHistory> = emptyList(),
+    @ProtoNumber(105) var updateStrategy: UpdateStrategy = UpdateStrategy.ALWAYS_UPDATE,
 ) {
-    fun getMangaImpl(): MangaImpl {
-        return MangaImpl().apply {
+    fun getMangaImpl(): MangaImpl =
+        MangaImpl().apply {
             url = this@BackupManga.url
             title = this@BackupManga.title
             artist = this@BackupManga.artist
@@ -52,24 +54,22 @@ data class BackupManga(
             date_added = this@BackupManga.dateAdded
             viewer_flags = this@BackupManga.viewer_flags ?: this@BackupManga.viewer
             chapter_flags = this@BackupManga.chapterFlags
+            update_strategy = this@BackupManga.updateStrategy
         }
-    }
 
-    fun getChaptersImpl(): List<ChapterImpl> {
-        return chapters.map {
+    fun getChaptersImpl(): List<ChapterImpl> =
+        chapters.map {
             it.toChapterImpl()
         }
-    }
 
-    fun getTrackingImpl(): List<TrackImpl> {
-        return tracking.map {
+    fun getTrackingImpl(): List<TrackImpl> =
+        tracking.map {
             it.getTrackingImpl()
         }
-    }
 
     companion object {
-        fun copyFrom(manga: Manga): BackupManga {
-            return BackupManga(
+        fun copyFrom(manga: Manga): BackupManga =
+            BackupManga(
                 url = manga.url,
                 title = manga.title,
                 artist = manga.artist,
@@ -83,8 +83,7 @@ data class BackupManga(
                 dateAdded = manga.date_added,
                 viewer = manga.readingModeType,
                 viewer_flags = manga.viewer_flags,
-                chapterFlags = manga.chapter_flags
+                chapterFlags = manga.chapter_flags,
             )
-        }
     }
 }

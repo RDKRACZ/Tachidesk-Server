@@ -7,18 +7,26 @@ package suwayomi.tachidesk.manga.impl.backup.proto
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at https://mozilla.org/MPL/2.0/. */
 
+import com.fasterxml.jackson.annotation.JsonIgnore
 import okio.buffer
 import okio.gzip
 import okio.source
-import org.jetbrains.exposed.sql.select
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
-import suwayomi.tachidesk.manga.impl.backup.AbstractBackupValidator
 import suwayomi.tachidesk.manga.impl.backup.proto.models.Backup
-import suwayomi.tachidesk.manga.impl.backup.proto.models.BackupSerializer
+import suwayomi.tachidesk.manga.impl.track.tracker.TrackerManager
 import suwayomi.tachidesk.manga.model.table.SourceTable
 import java.io.InputStream
 
-object ProtoBackupValidator : AbstractBackupValidator() {
+object ProtoBackupValidator {
+    data class ValidationResult(
+        val missingSources: List<String>,
+        val missingTrackers: List<String>,
+        val mangasMissingSources: List<String>,
+        @JsonIgnore
+        val missingSourceIds: List<Pair<Long, String>>,
+    )
+
     fun validate(backup: Backup): ValidationResult {
         if (backup.backupManga.isEmpty()) {
             throw Exception("Backup does not contain any manga.")
@@ -26,31 +34,42 @@ object ProtoBackupValidator : AbstractBackupValidator() {
 
         val sources = backup.getSourceMap()
 
-        val missingSources = transaction {
-            sources
-                .filter { SourceTable.select { SourceTable.id eq it.key }.firstOrNull() == null }
-                .map { "${it.value} (${it.key})" }
+        val missingSources =
+            transaction {
+                sources.filter { SourceTable.selectAll().where { SourceTable.id eq it.key }.firstOrNull() == null }
+            }
+
+        val trackers =
+            backup.backupManga
+                .flatMap { it.tracking }
+                .map { it.syncId }
+                .distinct()
+
+        val missingTrackers =
+            trackers
+                .mapNotNull { TrackerManager.getTracker(it) }
+                .filter { !it.isLoggedIn }
+                .map { it.name }
                 .sorted()
-        }
 
-//        val trackers = backup.backupManga
-//            .flatMap { it.tracking }
-//            .map { it.syncId }
-//            .distinct()
-
-        val missingTrackers = listOf("")
-//        val missingTrackers = trackers
-//            .mapNotNull { trackManager.getService(it) }
-//            .filter { !it.isLogged }
-//            .map { context.getString(it.nameRes()) }
-//            .sorted()
-
-        return ValidationResult(missingSources, missingTrackers)
+        return ValidationResult(
+            missingSources
+                .map { "${it.value} (${it.key})" }
+                .sorted(),
+            missingTrackers,
+            emptyList(),
+            missingSources.toList(),
+        )
     }
 
-    suspend fun validate(sourceStream: InputStream): ValidationResult {
-        val backupString = sourceStream.source().gzip().buffer().use { it.readByteArray() }
-        val backup = ProtoBackupImport.parser.decodeFromByteArray(BackupSerializer, backupString)
+    fun validate(sourceStream: InputStream): ValidationResult {
+        val backupString =
+            sourceStream
+                .source()
+                .gzip()
+                .buffer()
+                .use { it.readByteArray() }
+        val backup = ProtoBackupImport.parser.decodeFromByteArray(Backup.serializer(), backupString)
 
         return validate(backup)
     }
